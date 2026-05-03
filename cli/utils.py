@@ -187,6 +187,13 @@ def _select_model(provider: str, mode: str) -> str:
     if provider.lower() == "openrouter":
         return select_openrouter_model()
 
+    if provider.lower() == "custom":
+        return questionary.text(
+            f"Enter model ID ({mode}-thinking):",
+            default="qwen3.6-35b-vlm",
+            validate=lambda x: len(x.strip()) > 0 or "Please enter a model ID.",
+        ).ask().strip()
+
     if provider.lower() == "azure":
         return questionary.text(
             f"Enter Azure deployment name ({mode}-thinking):",
@@ -242,6 +249,7 @@ def select_llm_provider() -> tuple[str, str | None]:
         ("OpenRouter", "openrouter", "https://openrouter.ai/api/v1"),
         ("Azure OpenAI", "azure", None),
         ("Ollama", "ollama", "http://localhost:11434/v1"),
+        ("Custom (OpenAI-compatible)", "custom", None),
     ]
 
     choice = questionary.select(
@@ -265,6 +273,23 @@ def select_llm_provider() -> tuple[str, str | None]:
         exit(1)
 
     provider, url = choice
+
+    if provider == "custom":
+        default_url = os.environ.get("CUSTOM_LLM_BASE_URL", "http://127.0.0.1:8086/v1")
+        url = questionary.text(
+            "Enter base URL (e.g. http://127.0.0.1:8086/v1):",
+            default=default_url,
+            validate=lambda x: len(x.strip()) > 0 or "Please enter a base URL.",
+        ).ask().strip()
+        default_key = os.environ.get("OPENAI_API_KEY", "")
+        api_key = questionary.text(
+            "Enter API key (leave blank for none):",
+            default=default_key,
+        ).ask().strip()
+        if api_key:
+            import os
+            os.environ["OPENAI_API_KEY"] = api_key
+
     return provider, url
 
 
